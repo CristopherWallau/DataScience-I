@@ -1,0 +1,22 @@
+PROMPT passado para o ChatGPT: I will give you a notebook with various Altair Plots. Create a Streamlit dashboard that I can use to demonstrate the plots I generated.
+
+Ele retornou;
+
+Done — here is the Streamlit dashboard file:
+
+Download ￼streamlit_altair_dashboard.py￼
+
+Run it with:
+
+streamlit run streamlit_altair_dashboard.py
+
+It includes:
+	•	sidebar filters for origin and model year
+	•	adjustable point size, opacity, and histogram bins
+	•	tabs grouping the notebook plots by purpose
+	•	the original interactive Altair examples
+	•	the exercise plots at the end as a separate section
+
+Dependencies:
+
+pip install streamlit altair vega_datasets pandas
