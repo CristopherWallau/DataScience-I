@@ -1,3 +1,7 @@
+
+Feito por Arthur Andrade da Silva, Cristopher de Wallau e Vitor Santana Feijó
+
+
 ## 🚀 Como rodar o projeto localmente
 
 Para visualizar os dashboards interativos e rodar as análises na sua máquina, siga os passos abaixo:
