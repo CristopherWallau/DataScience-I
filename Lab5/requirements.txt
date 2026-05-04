@@ -1,0 +1,8 @@
+pandas 
+altair 
+pylance
+Pylance
+vega_datasets 
+scikit-learn 
+numpy
+matplotlib
