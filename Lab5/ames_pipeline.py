@@ -3,9 +3,9 @@ Ames Housing Dataset — Pipeline completo
 Limpeza de dados + Feature Engineering + Regressão Linear
 
 Uso:
-    df_train = pd.read_csv("train.csv")
-    df_test  = pd.read_csv("test.csv")
-    X_train, X_test, y_train = build_pipeline(df_train, df_test)
+    df_train_student = pd.read_csv("train.csv")
+    df_test_student  = pd.read_csv("test.csv")
+    X_train, X_test, y_train = build_pipeline(df_train_student, df_test_student)
 """
 
 import numpy as np
@@ -19,7 +19,7 @@ from statsmodels.stats.outliers_influence import variance_inflation_factor
 import warnings
 warnings.filterwarnings("ignore")
 
-
+df = pd.read_csv("train_student.csv")
 # ─────────────────────────────────────────────
 # FASE 1 — VALORES AUSENTES
 # ─────────────────────────────────────────────
@@ -143,68 +143,65 @@ def encode_binary(df: pd.DataFrame) -> pd.DataFrame:
 
 
 def target_encode_neighborhood(
-    df_train: pd.DataFrame,
-    df_test: pd.DataFrame,
+    df_train_student: pd.DataFrame,
+    df_test_student: pd.DataFrame,
     target: pd.Series,
     n_splits: int = 5,
 ) -> tuple[pd.DataFrame, pd.DataFrame]:
-    """
-    Target encoding do Neighborhood com k-fold para evitar data leakage.
-    Substitui cada categoria pela média do SalePrice calculada out-of-fold.
-    """
-    df_train = df_train.copy()
-    df_test  = df_test.copy()
-
+    
+    df_train_student = df_train_student.copy()
+    df_test_student  = df_test_student.copy()
     global_mean = target.mean()
 
-    # Treino: calcular OOF (out-of-fold) para evitar leakage
-    oof_encoded = np.zeros(len(df_train))
+    # 1. Calcular médias para o TESTE (antes de mexer no treino)
+    # Usamos os dados originais passados para a função
+    full_mean = (
+        df_train_student.assign(target=target.values)
+        .groupby("Neighborhood")["target"]
+        .mean()
+    )
+
+    # 2. Treino: calcular OOF (out-of-fold) para evitar data leakage
+    oof_encoded = np.zeros(len(df_train_student))
     kf = KFold(n_splits=n_splits, shuffle=True, random_state=42)
 
-    for train_idx, val_idx in kf.split(df_train):
+    for train_idx, val_idx in kf.split(df_train_student):
         fold_mean = (
-            df_train.iloc[train_idx]
+            df_train_student.iloc[train_idx]
             .assign(target=target.iloc[train_idx])
             .groupby("Neighborhood")["target"]
             .mean()
         )
         oof_encoded[val_idx] = (
-            df_train.iloc[val_idx]["Neighborhood"]
+            df_train_student.iloc[val_idx]["Neighborhood"]
             .map(fold_mean)
             .fillna(global_mean)
             .values
         )
 
-    df_train["Neighborhood_enc"] = oof_encoded
-
-    # Teste: usar média completa do treino
-    full_mean = (
-        df_train.assign(target=target.values)
-        .groupby("Neighborhood")["target"]
-        .mean()
-    )
-    df_test["Neighborhood_enc"] = (
-        df_test["Neighborhood"].map(full_mean).fillna(global_mean)
+    # 3. Aplicar os resultados
+    df_train_student["Neighborhood_enc"] = oof_encoded
+    df_test_student["Neighborhood_enc"] = (
+        df_test_student["Neighborhood"].map(full_mean).fillna(global_mean)
     )
 
-    return df_train, df_test
+    # 4. AGORA SIM: Deletar a coluna original de ambos
+    df_train_student = df_train_student.drop(columns="Neighborhood")
+    df_test_student = df_test_student.drop(columns="Neighborhood")
 
+    return df_train_student, df_test_student
 
-def one_hot_encode(df_train: pd.DataFrame, df_test: pd.DataFrame) -> tuple[pd.DataFrame, pd.DataFrame]:
-    """
-    One-hot encoding alinhado entre treino e teste.
-    Garante as mesmas colunas nos dois conjuntos.
-    """
-    nominal = [c for c in NOMINAL_COLS if c in df_train.columns and c != "Neighborhood"]
+def one_hot_encode(df_train_student, df_test_student):
+    nominal = [c for c in NOMINAL_COLS if c in df_train_student.columns and c != "Neighborhood"]
+    
+    # Adicionamos o dtype=int para evitar colunas True/False
+    df_train_student_enc = pd.get_dummies(df_train_student, columns=nominal, drop_first=True, dtype=int)
+    df_test_student_enc  = pd.get_dummies(df_test_student,  columns=nominal, drop_first=True, dtype=int)
 
-    df_train_enc = pd.get_dummies(df_train, columns=nominal, drop_first=True)
-    df_test_enc  = pd.get_dummies(df_test,  columns=nominal, drop_first=True)
-
-    # Alinhar colunas (teste pode não ter todas as categorias)
-    df_train_enc, df_test_enc = df_train_enc.align(
-        df_test_enc, join="left", axis=1, fill_value=0
+    df_train_student_enc, df_test_student_enc = df_train_student_enc.align(
+        df_test_student_enc, join="left", axis=1, fill_value=0
     )
-    return df_train_enc, df_test_enc
+    return df_train_student_enc, df_test_student_enc
 
 
 # ─────────────────────────────────────────────
@@ -334,8 +331,8 @@ def log_skewed_features(df: pd.DataFrame, threshold: float = 0.75) -> pd.DataFra
 
 
 def scale_features(
-    df_train: pd.DataFrame,
-    df_test: pd.DataFrame,
+    df_train_student: pd.DataFrame,
+    df_test_student: pd.DataFrame,
     method: str = "robust",
 ) -> tuple[pd.DataFrame, pd.DataFrame]:
     """
@@ -344,13 +341,13 @@ def scale_features(
     - 'standard' → StandardScaler (z-score clássico)
     Fit apenas no treino, transform em treino e teste.
     """
-    num_cols = df_train.select_dtypes(include=[np.number]).columns.tolist()
+    num_cols = df_train_student.select_dtypes(include=[np.number]).columns.tolist()
 
     scaler = RobustScaler() if method == "robust" else StandardScaler()
-    df_train[num_cols] = scaler.fit_transform(df_train[num_cols])
-    df_test[num_cols]  = scaler.transform(df_test[num_cols])
+    df_train_student[num_cols] = scaler.fit_transform(df_train_student[num_cols])
+    df_test_student[num_cols]  = scaler.transform(df_test_student[num_cols])
 
-    return df_train, df_test
+    return df_train_student, df_test_student
 
 
 def check_vif(df: pd.DataFrame, threshold: float = 10.0) -> pd.DataFrame:
@@ -379,8 +376,8 @@ def check_vif(df: pd.DataFrame, threshold: float = 10.0) -> pd.DataFrame:
 # ─────────────────────────────────────────────
 
 def build_pipeline(
-    df_train_raw: pd.DataFrame,
-    df_test_raw: pd.DataFrame,
+    df_train_student_raw: pd.DataFrame,
+    df_test_student_raw: pd.DataFrame,
     target_col: str = "SalePrice",
     check_multicollinearity: bool = False,
 ) -> tuple[pd.DataFrame, pd.DataFrame, pd.Series]:
@@ -389,8 +386,8 @@ def build_pipeline(
 
     Parâmetros
     ----------
-    df_train_raw : DataFrame com os dados de treino (inclui SalePrice)
-    df_test_raw  : DataFrame com os dados de teste (sem SalePrice)
+    df_train_student_raw : DataFrame com os dados de treino (inclui SalePrice)
+    df_test_student_raw  : DataFrame com os dados de teste (sem SalePrice)
     target_col   : nome da coluna target
     check_multicollinearity : se True, calcula VIF (pode ser lento)
 
@@ -405,57 +402,57 @@ def build_pipeline(
     print("=" * 55)
 
     # Separar target
-    y_raw = df_train_raw[target_col].copy()
-    df_train = df_train_raw.drop(columns=[target_col, "Id"], errors="ignore").copy()
-    df_test  = df_test_raw.drop(columns=["Id"], errors="ignore").copy()
+    y_raw = df_train_student_raw[target_col].copy()
+    df_train_student = df_train_student_raw.drop(columns=[target_col, "Id"], errors="ignore").copy()
+    df_test_student  = df_test_student_raw.drop(columns=["Id"], errors="ignore").copy()
 
     # --- Fase 1: Valores ausentes ---
     print("\n[1/6] Tratando valores ausentes...")
-    df_train = handle_missing_values(df_train)
-    df_test  = handle_missing_values(df_test)
+    df_train_student = handle_missing_values(df_train_student)
+    df_test_student  = handle_missing_values(df_test_student)
 
     # --- Fase 3a: Remover outliers (só no treino) ---
     print("[2/6] Removendo outliers do treino...")
-    df_train, y_raw = remove_outliers(df_train, y_raw)
-    print(f"  Registros de treino após limpeza: {len(df_train)}")
+    df_train_student, y_raw = remove_outliers(df_train_student, y_raw)
+    print(f"  Registros de treino após limpeza: {len(df_train_student)}")
 
     # --- Fase 4: Feature engineering ---
     print("[3/6] Criando features derivadas...")
-    df_train = engineer_features(df_train)
-    df_test  = engineer_features(df_test)
+    df_train_student = engineer_features(df_train_student)
+    df_test_student  = engineer_features(df_test_student)
 
     # --- Fase 2a: Encoding ordinal e binário ---
     print("[4/6] Encoding de variáveis categóricas...")
-    df_train = encode_ordinals(df_train)
-    df_test  = encode_ordinals(df_test)
-    df_train = encode_binary(df_train)
-    df_test  = encode_binary(df_test)
+    df_train_student = encode_ordinals(df_train_student)
+    df_test_student  = encode_ordinals(df_test_student)
+    df_train_student = encode_binary(df_train_student)
+    df_test_student  = encode_binary(df_test_student)
 
     # --- Fase 2b: Target encoding do Neighborhood ---
     y_log = log_transform_target(y_raw)
-    df_train, df_test = target_encode_neighborhood(df_train, df_test, y_log)
+    df_train_student, df_test_student = target_encode_neighborhood(df_train_student, df_test_student, y_log)
 
     # --- Fase 2c: One-hot encoding das nominais ---
-    df_train, df_test = one_hot_encode(df_train, df_test)
+    df_train_student, df_test_student = one_hot_encode(df_train_student, df_test_student)
 
     # --- Fase 5a: Log em features assimétricas ---
     print("[5/6] Transformando features assimétricas...")
-    df_train = log_skewed_features(df_train)
-    df_test  = log_skewed_features(df_test)
+    df_train_student = log_skewed_features(df_train_student)
+    df_test_student  = log_skewed_features(df_test_student)
 
     # --- Fase 5b: Escala ---
     print("[6/6] Escalando features...")
-    df_train, df_test = scale_features(df_train, df_test, method="robust")
+    df_train_student, df_test_student = scale_features(df_train_student, df_test_student, method="robust")
 
     # --- Opcional: verificar multicolinearidade ---
     if check_multicollinearity:
         print("\n[Extra] Calculando VIF...")
-        check_vif(df_train)
+        check_vif(df_train_student)
 
-    print(f"\n  Shape final — Treino: {df_train.shape} | Teste: {df_test.shape}")
+    print(f"\n  Shape final — Treino: {df_train_student.shape} | Teste: {df_test_student.shape}")
     print("=" * 55)
 
-    return df_train, df_test, y_log
+    return df_train_student, df_test_student, y_log
 
 
 # ─────────────────────────────────────────────
@@ -562,14 +559,14 @@ def predict_and_submit(
 
 if __name__ == "__main__":
     # 1. Carregar dados
-    df_train = pd.read_csv("train.csv")
-    df_test  = pd.read_csv("test.csv")
-    test_ids = df_test["Id"]
+    df_train_student = pd.read_csv("train_student.csv")
+    df_test_student  = pd.read_csv("test_student.csv")
+    test_ids = df_test_student["Id"]
 
     # 2. Executar pipeline
     X_train, X_test, y_train = build_pipeline(
-        df_train,
-        df_test,
+        df_train_student,
+        df_test_student,
         check_multicollinearity=False,  # True para análise detalhada de VIF
     )
 

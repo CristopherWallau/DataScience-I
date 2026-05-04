@@ -1,7 +1,7 @@
 pandas 
 altair 
 pylance
-Pylance
+statsmodels
 vega_datasets 
 scikit-learn 
 numpy
