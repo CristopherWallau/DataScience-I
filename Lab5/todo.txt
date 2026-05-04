@@ -1,0 +1,44 @@
+- dropping columns with many missing values
+- imputing missing values numerically and categorically
+- one-hot encoding categorical variables
+- applying `log1p(SalePrice)` during training
+- trying different regularization strengths
+- comparing linear and non-linear models
+- checking whether some features are highly skewed
+
+
+1. Inspect the training data
+2. Identify numeric and categorical variables
+3. Handle missing values
+4. Encode categorical variables
+5. Optionally transform skewed variables
+6. Build a baseline regression model
+7. Evaluate improvements using validation on the training set
+8. Train your final model on the full student training set
+9. Predict on `test_student.csv`
+10. Submit the predictions to the leaderboard
+
+Before your first submission, verify that:
+
+- [ ] `train_student.csv` loads correctly
+- [ ] `test_student.csv` has the same predictor columns as expected
+- [ ] your preprocessing works for both train and test
+- [ ] your model produces one prediction per test row
+- [ ] the output file has exactly two columns: `Id`, `prediction`
+- [ ] all predictions are numeric
+- [ ] all predictions are non-negative
+
+## 🐍 Suggested Notebook Structure
+
+You may organize your work using sections such as:
+
+1. Data loading
+2. Exploratory inspection
+3. Missing-value handling
+4. Feature encoding
+5. Train/validation split
+6. Baseline model
+7. Improved model
+8. Final training and test prediction
+9. Submission file generation
+10. Reflection
