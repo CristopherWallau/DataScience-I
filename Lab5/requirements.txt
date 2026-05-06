@@ -1,8 +1,8 @@
 pandas 
 altair 
-pylance
 statsmodels
 vega_datasets 
 scikit-learn 
 numpy
 matplotlib
+seaborn
