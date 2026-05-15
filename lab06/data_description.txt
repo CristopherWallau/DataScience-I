@@ -13,17 +13,17 @@ Transported - Whether the passenger was transported to another dimension. This i
 
 
 Plan of action for each variable for training:
-PassengerId - removal 
-HomePlanet - one hot encoding
-CryoSleep - binary encoding
+PassengerId - removal  
+HomePlanet - one hot encoding 
+CryoSleep - binary encoding 
 Cabin - (feature engineering) separate deck, num and side into 3 separate varibles:
   deck - one hot encoding
   num - one hot encoding 
   side - one hot encoding 
 
 Destination - one hot encoding 
-Age - one hot encoding
-VIP - binary encoding
+Age -
+VIP - binary encoding 
 RoomService - one hot encoding
 Name - removal
 Transported - target
