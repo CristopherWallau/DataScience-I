@@ -22,8 +22,8 @@ Cabin - (feature engineering) separate deck, num and side into 3 separate varibl
   side - one hot encoding 
 
 Destination - one hot encoding 
-Age -
+Age - Binary / Original
 VIP - binary encoding 
-RoomService - one hot encoding
+RoomService, FoodCourt, ShoppingMall, Spa, VRDeck - Removal (substituing for TotalSpending)
 Name - removal
 Transported - target
